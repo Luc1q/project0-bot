@@ -18,7 +18,7 @@ def get_main_keyboard():
     return ReplyKeyboardMarkup([
         [KeyboardButton("🛠 Проблема с товаром")],
         [KeyboardButton("❓ Задать вопрос")],
-        [KeyboardButton("💸 Кэшбэк за отзыв")]
+        [KeyboardButton("₽ Кэшбэк за отзыв Wildberries")]
     ], resize_keyboard=True)
 
 # Пересылка сообщения администратору
@@ -121,7 +121,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     support_messages = {
         "🛠 Проблема с товаром": "Проблема с товаром",
         "❓ Задать вопрос": "Вопрос",
-        "💸 Кэшбэк за отзыв": "Кэшбэк за отзыв"
+        "₽ Кэшбэк за отзыв Wildberries": "Кэшбэк за отзыв Wildberries"
     }
     
     if text in support_messages:
@@ -130,12 +130,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if text == "💸 Кэшбэк за отзыв":
             context.user_data['cashback_state'] = 'awaiting_photo'
             await update.message.reply_text(
-                "📸 Пришлите скриншот вашего отзыва и укажите в подписи:\n"
+                "📸 Пришлите скриншот вашего отзыва и укажите:\n"
                 "1. Номер телефона\n"
-                "2. Банк или номер карты для перевода\n\n"
-                "Пример подписи:\n"
+                "2. ФИО\n"
+                "3. Банк или номер карты для перевода\n\n"
+                "Пример:\n"
                 "Телефон: +79991234567\n"
-                "Карта Сбербанка: 1234 5678 9012 3456",
+                "ФИО: Иванов Иван Иванович"
+                "Карта Банка: 1234 5678 9012 3456",
                 reply_markup=ReplyKeyboardRemove()
             )
         else:
@@ -151,7 +153,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await forward_to_admin(update, context, "Кэшбэк за отзыв")
         context.user_data.pop('cashback_state', None)
         await update.message.reply_text(
-            "✅ Ваш запрос отправлен администратору!",
+            "✅ Ваш запрос отправлен, ожидайте!",
             reply_markup=get_main_keyboard()
         )
         return
@@ -161,7 +163,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         issue_type = context.user_data['issue_type']
         await forward_to_admin(update, context, issue_type)
         await update.message.reply_text(
-            "✅ Ваше сообщение отправлено администратору! Мы ответим в ближайшее время.",
+            "✅ Ваше сообщение отправлено! Мы ответим в самое ближайшее время.",
             reply_markup=get_main_keyboard()
         )
         del context.user_data['issue_type']
@@ -186,7 +188,8 @@ async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(
                 "📝 Теперь укажите реквизиты для перевода в формате:\n"
                 "Телефон: +79991234567\n"
-                "Карта Сбербанка: 1234 5678 9012 3456"
+                "ФИО: Иванов Иван Иванович"
+                "Карта Банка: 1234 5678 9012 3456"
             )
         return
     
@@ -195,7 +198,7 @@ async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
         issue_type = context.user_data['issue_type']
         await forward_to_admin(update, context, issue_type)
         await update.message.reply_text(
-            "✅ Ваше сообщение отправлено администратору! Мы ответим в ближайшее время.",
+            "✅ Ваше сообщение отправлено! Мы ответим в самое ближайшее время.",
             reply_markup=get_main_keyboard()
         )
         del context.user_data['issue_type']
