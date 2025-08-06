@@ -11,8 +11,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ID администратора и службы поддержки
-ADMIN_ID = 929334625  # Замените на ваш ID
-SUPPORT_ID = 848337587  # Замените на ID службы поддержки
+ADMIN_ID = 736634954  # Замените на ваш ID
+SUPPORT_ID = 736634954  # Замените на ID службы поддержки
 
 # Клавиатуры
 def get_main_keyboard():
@@ -216,4 +216,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
