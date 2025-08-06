@@ -202,7 +202,7 @@ async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
 def main():
-    application = Application.builder().token("7748869714:AAFT58Mc0wH9g_x9mbozRRWY_iXPFCdxnHU").build()
+    application = Application.builder().token("8357794711:AAEGxzXXsJqS4c-Fx64bsAglj_cteNes734").build()
     
     # Основные команды
     application.add_handler(CommandHandler("start", start))
@@ -216,3 +216,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
