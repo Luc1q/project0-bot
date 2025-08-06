@@ -14,25 +14,12 @@ logger = logging.getLogger(__name__)
 ADMIN_ID = 929334625  # Замените на ваш ID
 SUPPORT_ID = 848337587  # Замените на ID службы поддержки
 
-# ID канала для отзывов
-FEEDBACK_CHANNEL_ID = "-1002394099637"  # Замените на реальный ID
-
-# Кэш для хранения отзывов
-feedback_cache = []
-
 # Клавиатуры
 def get_main_keyboard():
     return ReplyKeyboardMarkup([
-        [KeyboardButton("🛠 Проблема с товаром"), KeyboardButton("📦 Пришёл не тот товар")],
+        [KeyboardButton("🛠 Проблема с товаром")],
         [KeyboardButton("❓ Задать вопрос")],
-        [KeyboardButton("📝 Оставить отзыв"), KeyboardButton("👀 Посмотреть отзывы")],
         [KeyboardButton("💸 Кэшбэк за отзыв")]
-    ], resize_keyboard=True)
-
-def get_rating_keyboard():
-    return ReplyKeyboardMarkup([
-        [KeyboardButton("⭐️ 1"), KeyboardButton("⭐️ 2"), KeyboardButton("⭐️ 3")],
-        [KeyboardButton("⭐️ 4"), KeyboardButton("⭐️ 5"), KeyboardButton("🚫 Без оценки")]
     ], resize_keyboard=True)
 
 # Пересылка сообщения в поддержку
@@ -111,73 +98,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=get_main_keyboard()
     )
 
-async def show_feedbacks(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        # Получаем последние сообщения из канала
-        messages = []
-        try:
-            async for msg in context.bot.get_chat_history(chat_id=FEEDBACK_CHANNEL_ID, limit=5):
-                if msg.text:
-                    messages.append(msg.text)
-        except Exception as e:
-            logger.error(f"Ошибка при чтении истории канала: {e}")
-        
-        if messages:
-            # Формируем сообщение из канала
-            feedbacks_text = "🌟 Последние отзывы:\n\n"
-            for i, msg in enumerate(messages, 1):
-                parts = msg.split('\n')
-                feedback = parts[0]  # Первая строка - текст отзыва
-                
-                # Ищем строку с оценкой
-                rating_line = ""
-                for part in parts:
-                    if "⭐️" in part or "🚫" in part:
-                        rating_line = part
-                        break
-                
-                feedbacks_text += f"{i}. {feedback}\n"
-                if rating_line:
-                    feedbacks_text += f"{rating_line}\n"
-                feedbacks_text += "\n"
-            
-            await update.message.reply_text(feedbacks_text)
-            return
-        elif feedback_cache:
-            # Если канал недоступен, используем кэш
-            last_five = feedback_cache[-5:][::-1]
-            cache_text = "🌟 Последние отзывы:\n\n"
-            for i, fb in enumerate(last_five, 1):
-                parts = fb.split('\n')
-                cache_text += f"{i}. {parts[0]}\n"
-                if len(parts) > 1:
-                    cache_text += f"{parts[1]}\n"
-                cache_text += "\n"
-            await update.message.reply_text(cache_text)
-            return
-        else:
-            await update.message.reply_text("Пока нет отзывов. Будьте первым!")
-            return
-            
-    except Exception as e:
-        logger.error(f"Ошибка показа отзывов: {e}")
-        await update.message.reply_text(
-            "Примеры отзывов:\n\n"
-            "1. Отличный товар! Быстрая доставка\n⭐️⭐️⭐️⭐️⭐️\n\n"
-            "2. Качество на высоте\n⭐️⭐️⭐️⭐️\n\n"
-            "3. Недоволен упаковкой\n⭐️⭐️⭐️\n\n"
-            "4. Продукт супер\n⭐️⭐️⭐️⭐️\n\n"
-            "5. Всё понравилось\n🚫 Без оценки"
-        )
-
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
     text = update.message.text
-    
-    # Показ последних отзывов
-    if text == "👀 Посмотреть отзывы":
-        await show_feedbacks(update, context)
-        return
     
     # Обработка кнопок поддержки с разными сообщениями
     support_messages = {
@@ -185,12 +108,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "🛠 <b>Проблема с товаром</b>\n\n"
             "Опишите проблему с товаром и укажите номер заказа. Мы постараемся решить ваш вопрос как можно скорее.\n\n"
             "<i>Вы можете прикрепить фото для наглядности.</i>"
-        ),
-        "📦 Пришёл не тот товар": (
-            "📦 <b>Пришёл не тот товар</b>\n\n"
-            "Укажите номер заказа и опишите, какой товар вы заказывали и какой пришел вместо него. "
-            "Мы решим эту проблему в кратчайшие сроки.\n\n"
-            "<i>Вы можете прикрепить фото ошибочного товара.</i>"
         ),
         "❓ Задать вопрос": (
             "❓ <b>Задать вопрос</b>\n\n"
@@ -207,7 +124,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
     
-    # Обработка обращений в поддержку (Проблемы с товаром, неверный товар, вопросы)
+    # Обработка обращений в поддержку (Проблемы с товаром, вопросы)
     if 'support_issue' in context.user_data:
         issue_type = context.user_data['support_issue']
         await forward_to_support(update, context, issue_type)
@@ -216,15 +133,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=get_main_keyboard()
         )
         del context.user_data['support_issue']
-        return
-    
-    # Обработка оставления отзыва
-    if text == "📝 Оставить отзыв":
-        await update.message.reply_text(
-            "Напишите ваш отзыв:",
-            reply_markup=ReplyKeyboardRemove()
-        )
-        context.user_data['feedback_state'] = 'awaiting_text'
         return
     
     # Обработка кнопки кэшбэка (отправляется администратору)
@@ -252,73 +160,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "✅ Запрос на кэшбэк отправлен администратору! Мы проверим информацию и ответим в ближайшее время.",
             reply_markup=get_main_keyboard()
         )
-        return
-    
-    # Обработка текста отзыва
-    if context.user_data.get('feedback_state') == 'awaiting_text':
-        context.user_data['feedback_text'] = text
-        context.user_data['feedback_state'] = 'awaiting_rating'
-        await update.message.reply_text(
-            "Пожалуйста, оцените товар (или нажмите 'Без оценки'):",
-            reply_markup=get_rating_keyboard()
-        )
-        return
-    
-    # Обработка оценки
-    if context.user_data.get('feedback_state') == 'awaiting_rating':
-        rating = None
-        if '⭐️' in text:
-            try:
-                rating = int(text.split()[1])
-            except (IndexError, ValueError):
-                rating = None
-        elif text == "🚫 Без оценки":
-            rating = None
-        
-        # Формируем сообщение для канала
-        feedback_text = context.user_data.get('feedback_text', '')
-        channel_message = feedback_text
-        if rating is not None:
-            stars = '⭐️' * rating
-            channel_message += f"\n{stars}"
-        else:
-            channel_message += "\n🚫 Без оценки"
-        
-        # Отправляем отзыв в канал
-        try:
-            await context.bot.send_message(
-                chat_id=FEEDBACK_CHANNEL_ID,
-                text=channel_message
-            )
-            # Сохраняем в кэш
-            feedback_cache.append(channel_message)
-            # Держим не более 50 отзывов в кэше
-            if len(feedback_cache) > 50:
-                feedback_cache.pop(0)
-        except Exception as e:
-            logger.error(f"Ошибка при отправке в канал: {e}")
-            await update.message.reply_text("⚠️ Ошибка при сохранении отзыва. Попробуйте позже.")
-            # Сбрасываем состояние
-            context.user_data.pop('feedback_state', None)
-            context.user_data.pop('feedback_text', None)
-            return
-        
-        # Подтверждение пользователю
-        if rating is not None:
-            stars = '⭐️' * rating
-            await update.message.reply_text(
-                f"✅ Спасибо за ваш отзыв и оценку {stars}!",
-                reply_markup=get_main_keyboard()
-            )
-        else:
-            await update.message.reply_text(
-                "✅ Спасибо за ваш отзыв!",
-                reply_markup=get_main_keyboard()
-            )
-        
-        # Очищаем состояние
-        context.user_data.pop('feedback_state', None)
-        context.user_data.pop('feedback_text', None)
         return
 
 # Обработчик медиа-сообщений
@@ -349,7 +190,7 @@ async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         return
     
-    # Если это обращение в поддержку (проблемы с товаром, неверный товар, вопросы)
+    # Если это обращение в поддержку (проблемы с товаром, вопросы)
     if 'support_issue' in context.user_data:
         issue_type = context.user_data['support_issue']
         await forward_to_support(update, context, issue_type)
@@ -358,15 +199,6 @@ async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=get_main_keyboard()
         )
         del context.user_data['support_issue']
-        return
-    
-    # Если это отзыв с фото - не поддерживается
-    if context.user_data.get('feedback_state') == 'awaiting_text':
-        await update.message.reply_text(
-            "⚠️ Пожалуйста, отправьте текстовый отзыв. Фото не поддерживаются.",
-            reply_markup=get_main_keyboard()
-        )
-        context.user_data.pop('feedback_state', None)
         return
 
 def main():
