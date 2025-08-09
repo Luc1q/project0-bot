@@ -127,7 +127,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text in support_messages:
         context.user_data['issue_type'] = support_messages[text]
         
-        if text == "💸 Кэшбэк за отзыв":
+        if text == "₽ Кэшбэк за отзыв Wildberries":
             context.user_data['cashback_state'] = 'awaiting_photo'
             await update.message.reply_text(
                 "📸 Пришлите скриншот вашего отзыва и укажите:\n"
@@ -223,3 +223,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
