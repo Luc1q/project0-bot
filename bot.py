@@ -16,14 +16,14 @@ ADMIN_ID = 736634954
 # Константы для текстов кнопок
 PROBLEM_BUTTON = "🛠 Проблема с товаром"
 QUESTION_BUTTON = "❓ Задать вопрос"
-CASHBACK_BUTTON = "₽ Кэшбэк за отзыв Wildberries"
+CASHBACK_BUTTON = "₽ Кэшбэк за отзыв"  # Убрано "Wildberries"
 
 # Клавиатуры
 def get_main_keyboard():
     return ReplyKeyboardMarkup([
         [KeyboardButton(PROBLEM_BUTTON)],
         [KeyboardButton(QUESTION_BUTTON)],
-        [KeyboardButton(CASHBACK_BUTTON)]
+        [KeyboardButton(CASHBACK_BUTTON)]  # Используем обновленную константу
     ], resize_keyboard=True)
 
 # Пересылка сообщения администратору
@@ -149,7 +149,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     support_messages = {
         PROBLEM_BUTTON: "Проблема с товаром",
         QUESTION_BUTTON: "Вопрос",
-        CASHBACK_BUTTON: "Кэшбэк за отзыв Wildberries"
+        CASHBACK_BUTTON: "Кэшбэк за отзыв"  # Убрано "Wildberries"
     }
     
     if text in support_messages:
@@ -158,7 +158,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Обработка кнопки кэшбэка
         if text == CASHBACK_BUTTON:
             context.user_data['cashback_state'] = 'awaiting_data'
-            # ИСПРАВЛЕННЫЙ ТЕКСТ С ПРАВИЛЬНЫМИ ПЕРЕНОСАМИ СТРОК
             await update.message.reply_text(
                 "📸 Пришлите скриншот вашего отзыва и укажите:\n"
                 "1. Номер телефона\n"
@@ -166,8 +165,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "3. Банк или номер карты для перевода\n\n"
                 "Пример:\n"
                 "Телефон: +79991234567\n"
-                "ФИО: Иванов Иван Иванович\n"  # ДОБАВЛЕН ПЕРЕНОС СТРОКИ
-                "Карта Банка: 1234 5678 9012 3456",  # ОТДЕЛЬНАЯ СТРОКА
+                "ФИО: Иванов Иван Иванович\n"
+                "Карта Банка: 1234 5678 9012 3456",
                 reply_markup=ReplyKeyboardRemove()
             )
         # Обработка других кнопок
@@ -180,7 +179,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     # Обработка текста для кэшбэка
     if context.user_data.get('cashback_state') == 'awaiting_data':
-        await forward_to_admin(update, context, "Кэшбэк за отзыв Wildberries")
+        await forward_to_admin(update, context, "Кэшбэк за отзыв")  # Убрано "Wildberries"
         context.user_data.pop('cashback_state', None)
         await update.message.reply_text(
             "✅ Ваш запрос отправлен! Ожидайте обработки.",
@@ -203,7 +202,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Обработка медиа для кэшбэка
     if context.user_data.get('cashback_state') == 'awaiting_data':
-        await forward_to_admin(update, context, "Кэшбэк за отзыв Wildberries")
+        await forward_to_admin(update, context, "Кэшбэк за отзыв")  # Убрано "Wildberries"
         context.user_data.pop('cashback_state', None)
         await update.message.reply_text(
             "✅ Ваш запрос отправлен администратору!",
