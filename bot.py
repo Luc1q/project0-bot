@@ -13,12 +13,17 @@ logger = logging.getLogger(__name__)
 # ID администратора
 ADMIN_ID = 736634954
 
+# Константы для текстов кнопок
+PROBLEM_BUTTON = "🛠 Проблема с товаром"
+QUESTION_BUTTON = "❓ Задать вопрос"
+CASHBACK_BUTTON = "₽ Кэшбэк за отзыв Wildberries"
+
 # Клавиатуры
 def get_main_keyboard():
     return ReplyKeyboardMarkup([
-        [KeyboardButton("🛠 Проблема с товаром")],
-        [KeyboardButton("❓ Задать вопрос")],
-        [KeyboardButton("₽ Кэшбэк за отзыв Wildberries")]
+        [KeyboardButton(PROBLEM_BUTTON)],
+        [KeyboardButton(QUESTION_BUTTON)],
+        [KeyboardButton(CASHBACK_BUTTON)]
     ], resize_keyboard=True)
 
 # Пересылка сообщения администратору
@@ -31,6 +36,7 @@ async def forward_to_admin(update: Update, context: ContextTypes.DEFAULT_TYPE, i
     
     time_str = datetime.now().strftime("%d.%m.%Y %H:%M")
     
+    # Формируем базовое сообщение
     message = (
         f"🚨 НОВОЕ СООБЩЕНИЕ\n"
         f"Тип: {issue_type}\n"
@@ -38,17 +44,40 @@ async def forward_to_admin(update: Update, context: ContextTypes.DEFAULT_TYPE, i
         f"Пользователь:\n{user_info}\n"
     )
     
-    # Добавляем текст сообщения
-    if update.message.text:
-        message += f"Сообщение:\n{update.message.text}"
+    # Добавляем контент сообщения
+    text_content = update.message.text or update.message.caption
+    if text_content:
+        message += f"Сообщение:\n{text_content}"
     
-    # Отправляем сообщение администратору
-    sent_message = await context.bot.send_message(
-        chat_id=ADMIN_ID, 
-        text=message
-    )
-    
-    # Сохраняем связь: ID сообщения администратора -> ID пользователя
+    # Отправляем контент администратору
+    try:
+        # Для фото
+        if update.message.photo:
+            photo = update.message.photo[-1]
+            sent_message = await context.bot.send_photo(
+                chat_id=ADMIN_ID,
+                photo=photo.file_id,
+                caption=message
+            )
+        # Для документов
+        elif update.message.document:
+            document = update.message.document
+            sent_message = await context.bot.send_document(
+                chat_id=ADMIN_ID,
+                document=document.file_id,
+                caption=message
+            )
+        # Для текста
+        else:
+            sent_message = await context.bot.send_message(
+                chat_id=ADMIN_ID, 
+                text=message
+            )
+    except Exception as e:
+        logger.error(f"Ошибка при пересылке администратору: {e}")
+        return
+
+    # Сохраняем связь сообщения
     context.bot_data.setdefault('admin_messages', {})[sent_message.message_id] = {
         'user_id': user.id,
         'original_message': update.message
@@ -114,21 +143,22 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.message.from_user
     text = update.message.text
     
     # Обработка кнопок поддержки
     support_messages = {
-        "🛠 Проблема с товаром": "Проблема с товаром",
-        "❓ Задать вопрос": "Вопрос",
-        "₽ Кэшбэк за отзыв Wildberries": "Кэшбэк за отзыв Wildberries"
+        PROBLEM_BUTTON: "Проблема с товаром",
+        QUESTION_BUTTON: "Вопрос",
+        CASHBACK_BUTTON: "Кэшбэк за отзыв Wildberries"
     }
     
     if text in support_messages:
         context.user_data['issue_type'] = support_messages[text]
         
-        if text == "₽ Кэшбэк за отзыв Wildberries":
-            context.user_data['cashback_state'] = 'awaiting_photo'
+        # Обработка кнопки кэшбэка
+        if text == CASHBACK_BUTTON:
+            context.user_data['cashback_state'] = 'awaiting_data'
+            # ИСПРАВЛЕННЫЙ ТЕКСТ С ПРАВИЛЬНЫМИ ПЕРЕНОСАМИ СТРОК
             await update.message.reply_text(
                 "📸 Пришлите скриншот вашего отзыва и укажите:\n"
                 "1. Номер телефона\n"
@@ -136,10 +166,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 "3. Банк или номер карты для перевода\n\n"
                 "Пример:\n"
                 "Телефон: +79991234567\n"
-                "ФИО: Иванов Иван Иванович"
-                "Карта Банка: 1234 5678 9012 3456",
+                "ФИО: Иванов Иван Иванович\n"  # ДОБАВЛЕН ПЕРЕНОС СТРОКИ
+                "Карта Банка: 1234 5678 9012 3456",  # ОТДЕЛЬНАЯ СТРОКА
                 reply_markup=ReplyKeyboardRemove()
             )
+        # Обработка других кнопок
         else:
             await update.message.reply_text(
                 "Опишите вашу проблему или вопрос. Вы можете прикрепить фото или документ:",
@@ -147,13 +178,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
         return
     
-    # Обработка данных для кэшбэка
-    if context.user_data.get('cashback_state') == 'awaiting_details':
-        context.user_data['cashback_details'] = text
-        await forward_to_admin(update, context, "Кэшбэк за отзыв")
+    # Обработка текста для кэшбэка
+    if context.user_data.get('cashback_state') == 'awaiting_data':
+        await forward_to_admin(update, context, "Кэшбэк за отзыв Wildberries")
         context.user_data.pop('cashback_state', None)
         await update.message.reply_text(
-            "✅ Ваш запрос отправлен, ожидайте!",
+            "✅ Ваш запрос отправлен! Ожидайте обработки.",
             reply_markup=get_main_keyboard()
         )
         return
@@ -171,26 +201,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Обработчик медиа-сообщений
 async def handle_media(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Обработка фото для кэшбэка
-    if context.user_data.get('cashback_state') == 'awaiting_photo' and update.message.photo:
-        context.user_data['cashback_photo'] = update.message.photo[-1].file_id
-        
-        if update.message.caption:
-            context.user_data['cashback_details'] = update.message.caption
-            await forward_to_admin(update, context, "Кэшбэк за отзыв")
-            context.user_data.pop('cashback_state', None)
-            await update.message.reply_text(
-                "✅ Ваш запрос отправлен администратору!",
-                reply_markup=get_main_keyboard()
-            )
-        else:
-            context.user_data['cashback_state'] = 'awaiting_details'
-            await update.message.reply_text(
-                "📝 Теперь укажите реквизиты для перевода в формате:\n"
-                "Телефон: +79991234567\n"
-                "ФИО: Иванов Иван Иванович\n"
-                "Карта Банка: 1234 5678 9012 3456\n"
-            )
+    # Обработка медиа для кэшбэка
+    if context.user_data.get('cashback_state') == 'awaiting_data':
+        await forward_to_admin(update, context, "Кэшбэк за отзыв Wildberries")
+        context.user_data.pop('cashback_state', None)
+        await update.message.reply_text(
+            "✅ Ваш запрос отправлен администратору!",
+            reply_markup=get_main_keyboard()
+        )
         return
     
     # Обработка медиа для обычных сообщений
@@ -210,7 +228,7 @@ def main():
     # Основные команды
     application.add_handler(CommandHandler("start", start))
     
-    # Обработчик ответов администратора (должен быть первым!)
+    # Обработчик ответов администратора
     admin_reply_filter = filters.Chat(ADMIN_ID) & filters.REPLY
     application.add_handler(MessageHandler(admin_reply_filter, handle_admin_reply))
     
@@ -223,5 +241,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
